@@ -17,8 +17,27 @@ python3 -m http.server 8000
 - **Tap the card** (or press space) to flip it; space again moves to the next card.
 - **Arrow keys** change cards; up/down hide and show the answer.
 - **S** stars the current card. "Starred only" filters the deck down to them.
-  Stars are saved in the browser's `localStorage` (key `surgicalrecall.starred`),
-  so they survive a reload. They're per-browser — not synced across devices.
+- **Reset** (right side of the filter row) clears your done marks. It asks once before clearing — the first
+  click arms it, the second confirms, and it disarms itself after 4 seconds.
+  Stars are not affected.
+
+## What's remembered
+
+Revealing a card's answer marks it **done**; done cards show a ✓ in the corner,
+and the header counts how many of the cards currently in view are done. Progress
+is saved to `localStorage` as you go and restored on reload:
+
+| Key | Holds |
+| --- | --- |
+| `surgicalrecall.starred` | starred cards |
+| `surgicalrecall.progress` | done cards, current card, chapter, order mode, starred-only, shuffle seed |
+
+Both are per-browser and per-origin — they don't sync across devices, and
+clearing site data wipes them.
+
+Shuffling stores a seed rather than the shuffled order, so reopening the page
+rebuilds the same sequence and drops you back on the card you were on. Clicking
+**Shuffle** again draws a new seed and reshuffles.
 - **Swipe** left/right on touch devices to move between cards.
 - The chapter dropdown filters by chapter; **Shuffle** and **Book order** set the
   card sequence.

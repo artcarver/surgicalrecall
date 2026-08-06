@@ -33,8 +33,9 @@ body{
 
 .mast{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:13px}
 .mast h1{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin:0;color:var(--plum)}
-.mast .count{font-size:11px;color:var(--soft)}
+.mast .count{font-size:11px;color:var(--soft);font-variant-numeric:tabular-nums;white-space:nowrap}
 .mast .count b{color:var(--ink);font-weight:600}
+.mast .count .dn::before{content:"\00b7";margin:0 6px;color:var(--rule)}
 
 .bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:13px}
 select,.chip{
@@ -48,6 +49,7 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
   background-size:5px 5px,5px 5px;background-repeat:no-repeat}
 .chip:hover{border-color:#B4C0AC}
 .chip.on{background:var(--plum);color:#FFF;border-color:var(--plum)}
+.chip.arm{background:var(--accent-soft);color:var(--accent);border-color:#E3C7BF}
 .chip:focus-visible,select:focus-visible,.card:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 .track{height:6px;background:#D6DECD;border-radius:999px;margin-bottom:16px;overflow:hidden}
@@ -72,6 +74,11 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
   font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--plum);
   background:var(--tag);border-radius:999px;padding:5px 10px
 }
+.seen{
+  margin-left:auto;display:none;align-items:center;gap:4px;
+  font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--stem)
+}
+.card.seen-on .seen{display:inline-flex}
 .star{border:0;background:none;padding:3px;margin:-3px;cursor:pointer;line-height:1;color:#C4CDBB}
 .star svg{display:block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.5}
 .star.on{color:var(--accent)}
@@ -114,7 +121,7 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
 <div class="wrap">
   <div class="mast">
     <h1>Surgical Recall / Rapid Fire</h1>
-    <div class="count"><b id="pos">1</b> / <span id="total">330</span></div>
+    <div class="count"><b id="pos">1</b> / <span id="total">330</span><span class="dn" id="donen"></span></div>
   </div>
 
   <div class="bar">
@@ -122,6 +129,7 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
     <button class="chip" id="shuffle" type="button">Shuffle</button>
     <button class="chip" id="order" type="button">Book order</button>
     <button class="chip" id="starred" type="button" aria-pressed="false">Starred only</button>
+    <button class="chip" id="reset" type="button">Reset done</button>
   </div>
 
   <div class="track"><i id="fill"></i></div>
@@ -131,6 +139,7 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
       <div class="card" id="card" tabindex="0" role="button" aria-expanded="false">
         <div class="head">
           <span class="ch" id="ch"></span>
+          <span class="seen">&#10003; Done</span>
           <button class="star" id="star" type="button" aria-label="Star this card" aria-pressed="false">
             <svg viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg>
           </button>
@@ -184,7 +193,43 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
     } catch (e){}
   }
 
+  var PROG = 'surgicalrecall.progress';
   var deck = [], pos = 0, star = loadStars(), shuffled = false, starOnly = false, chap = 'all';
+  var done = {}, atKey = null, seed = 1;
+
+  // Seeded shuffle: storing the seed rather than the shuffled order means a
+  // reload rebuilds the exact same sequence, so you resume where you left off.
+  function rng(s){
+    return function(){
+      s = s + 0x6D2B79F5 | 0;
+      var t = Math.imul(s ^ s >>> 15, 1 | s);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function loadProgress(){
+    try {
+      var s = JSON.parse(localStorage.getItem(PROG));
+      if (!s || typeof s !== 'object') return;
+      if (s.done instanceof Array) s.done.forEach(function(k){ done[k] = true; });
+      if (typeof s.at === 'string') atKey = s.at;
+      if (typeof s.seed === 'number') seed = s.seed;
+      if (typeof s.chap === 'string') chap = s.chap;
+      shuffled = !!s.shuffled;
+      starOnly = !!s.starOnly;
+    } catch (e){}
+  }
+  function saveProgress(){
+    try {
+      localStorage.setItem(PROG, JSON.stringify({
+        done: Object.keys(done).filter(function(k){ return done[k]; }),
+        at: deck.length ? deck[pos].k : null,
+        chap: chap, shuffled: shuffled, starOnly: starOnly, seed: seed
+      }));
+    } catch (e){}
+  }
+  loadProgress();
   var $ = function(id){ return document.getElementById(id); };
   var card = $('card');
 
@@ -197,20 +242,27 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
   });
   $('chapter').innerHTML = opts.join('');
 
-  function build(){
+  function build(restore){
     deck = ALL.filter(function(c){
       if (chap !== 'all' && String(c.c) !== chap) return false;
       if (starOnly && !star[c.k]) return false;
       return true;
     });
     if (shuffled){
+      var rnd = rng(seed);
       for (var i = deck.length - 1; i > 0; i--){
-        var j = Math.floor(Math.random() * (i + 1)), t = deck[i];
+        var j = Math.floor(rnd() * (i + 1)), t = deck[i];
         deck[i] = deck[j]; deck[j] = t;
       }
     }
     pos = 0;
+    if (restore && atKey){
+      for (var k = 0; k < deck.length; k++){
+        if (deck[k].k === atKey){ pos = k; break; }
+      }
+    }
     render();
+    saveProgress();
   }
 
   function render(){
@@ -219,6 +271,9 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
     $('empty').hidden = has;
     $('total').textContent = deck.length;
     $('pos').textContent = has ? pos + 1 : 0;
+    var n = 0;
+    deck.forEach(function(c){ if (done[c.k]) n++; });
+    $('donen').textContent = n + ' done';
     $('fill').style.width = has ? ((pos + 1) / deck.length * 100) + '%' : '0';
     if (!has) return;
     var c = deck[pos];
@@ -228,19 +283,32 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
     $('q').textContent = c.q;
     $('a').textContent = c.a;
     close();
+    card.classList.toggle('seen-on', !!done[c.k]);
     $('star').classList.toggle('on', !!star[c.k]);
     $('star').setAttribute('aria-pressed', star[c.k] ? 'true' : 'false');
     $('prev').disabled = pos === 0;
     $('next').disabled = pos === deck.length - 1;
   }
 
-  function open(){ card.classList.add('open'); card.setAttribute('aria-expanded','true'); $('reveal').textContent = 'Hide answer'; }
+  function open(){
+    card.classList.add('open'); card.setAttribute('aria-expanded','true'); $('reveal').textContent = 'Hide answer';
+    if (!deck.length) return;
+    var c = deck[pos];
+    if (!done[c.k]){
+      done[c.k] = true;
+      card.classList.add('seen-on');
+      var n = 0;
+      deck.forEach(function(d){ if (done[d.k]) n++; });
+      $('donen').textContent = n + ' done';
+    }
+    saveProgress();
+  }
   function close(){ card.classList.remove('open'); card.setAttribute('aria-expanded','false'); $('reveal').textContent = 'Show answer'; }
   function toggle(){ card.classList.contains('open') ? close() : open(); }
   function go(d){
     var n = pos + d;
     if (n < 0 || n >= deck.length) return;
-    pos = n; render();
+    pos = n; render(); saveProgress();
   }
 
   card.addEventListener('click', function(e){ if (e.target.closest('.star')) return; toggle(); });
@@ -264,7 +332,9 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
   $('star').addEventListener('click', toggleStar);
   $('chapter').addEventListener('change', function(){ chap = this.value; build(); });
   $('shuffle').addEventListener('click', function(){
-    shuffled = true; $('order').classList.remove('on'); this.classList.add('on'); build();
+    shuffled = true;
+    seed = (Math.random() * 4294967296) | 0;
+    $('order').classList.remove('on'); this.classList.add('on'); build();
   });
   $('order').addEventListener('click', function(){
     shuffled = false; $('shuffle').classList.remove('on'); this.classList.add('on'); build();
@@ -302,8 +372,30 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
     x0 = null;
   }, {passive:true});
 
-  $('order').classList.add('on');
-  build();
+  var armed = null;
+  function disarm(){
+    clearTimeout(armed); armed = null;
+    $('reset').classList.remove('arm');
+    $('reset').textContent = 'Reset done';
+  }
+  $('reset').addEventListener('click', function(){
+    if (!armed){
+      this.classList.add('arm');
+      this.textContent = 'Clear all done?';
+      armed = setTimeout(disarm, 4000);
+      return;
+    }
+    disarm();
+    done = {}; atKey = null;
+    build();
+  });
+
+  $('chapter').value = chap;
+  if (!$('chapter').value) { chap = 'all'; $('chapter').value = 'all'; }
+  $(shuffled ? 'shuffle' : 'order').classList.add('on');
+  $('starred').classList.toggle('on', starOnly);
+  $('starred').setAttribute('aria-pressed', starOnly ? 'true' : 'false');
+  build(true);
 })();
 </script>
 </body>

@@ -17,7 +17,7 @@ python3 -m http.server 8000
 - **Tap the card** (or press space) to flip it; space again moves to the next card.
 - **Arrow keys** change cards; up/down hide and show the answer.
 - **S** stars the current card. "Starred only" filters the deck down to them.
-- **Reset done** clears your done marks. It asks once before clearing — the first
+- **Reset** (right side of the filter row) clears your done marks. It asks once before clearing — the first
   click arms it, the second confirms, and it disarms itself after 4 seconds.
   Stars are not affected.
 

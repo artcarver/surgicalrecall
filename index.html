@@ -50,6 +50,7 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
 .chip:hover{border-color:#B4C0AC}
 .chip.on{background:var(--plum);color:#FFF;border-color:var(--plum)}
 .chip.arm{background:var(--accent-soft);color:var(--accent);border-color:#E3C7BF}
+#reset{margin-left:auto}
 .chip:focus-visible,select:focus-visible,.card:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 .track{height:6px;background:#D6DECD;border-radius:999px;margin-bottom:16px;overflow:hidden}
@@ -129,7 +130,7 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
     <button class="chip" id="shuffle" type="button">Shuffle</button>
     <button class="chip" id="order" type="button">Book order</button>
     <button class="chip" id="starred" type="button" aria-pressed="false">Starred only</button>
-    <button class="chip" id="reset" type="button">Reset done</button>
+    <button class="chip" id="reset" type="button">Reset</button>
   </div>
 
   <div class="track"><i id="fill"></i></div>
@@ -376,12 +377,12 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
   function disarm(){
     clearTimeout(armed); armed = null;
     $('reset').classList.remove('arm');
-    $('reset').textContent = 'Reset done';
+    $('reset').textContent = 'Reset';
   }
   $('reset').addEventListener('click', function(){
     if (!armed){
       this.classList.add('arm');
-      this.textContent = 'Clear all done?';
+      this.textContent = 'Clear done?';
       armed = setTimeout(disarm, 4000);
       return;
     }

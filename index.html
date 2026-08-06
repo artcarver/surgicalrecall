@@ -166,9 +166,24 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
             .replace(/'S\b/g, "'s")
             .split(' ').map(function(w){ return FIX[w] || w; }).join(' ');
   }
-  ALL.forEach(function(c,i){ c.i = i; c.t = nice(c.t); });
+  ALL.forEach(function(c){ c.t = nice(c.t); c.k = c.c + '|' + c.p + '|' + c.q; });
 
-  var deck = [], pos = 0, star = {}, shuffled = false, starOnly = false, chap = 'all';
+  var STORE = 'surgicalrecall.starred';
+  function loadStars(){
+    var out = {};
+    try {
+      var saved = JSON.parse(localStorage.getItem(STORE));
+      if (saved instanceof Array) saved.forEach(function(k){ out[k] = true; });
+    } catch (e){}
+    return out;
+  }
+  function saveStars(){
+    try {
+      localStorage.setItem(STORE, JSON.stringify(Object.keys(star).filter(function(k){ return star[k]; })));
+    } catch (e){}
+  }
+
+  var deck = [], pos = 0, star = loadStars(), shuffled = false, starOnly = false, chap = 'all';
   var $ = function(id){ return document.getElementById(id); };
   var card = $('card');
 
@@ -184,7 +199,7 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
   function build(){
     deck = ALL.filter(function(c){
       if (chap !== 'all' && String(c.c) !== chap) return false;
-      if (starOnly && !star[c.i]) return false;
+      if (starOnly && !star[c.k]) return false;
       return true;
     });
     if (shuffled){
@@ -212,8 +227,8 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
     $('q').textContent = c.q;
     $('a').textContent = c.a;
     close();
-    $('star').classList.toggle('on', !!star[c.i]);
-    $('star').setAttribute('aria-pressed', star[c.i] ? 'true' : 'false');
+    $('star').classList.toggle('on', !!star[c.k]);
+    $('star').setAttribute('aria-pressed', star[c.k] ? 'true' : 'false');
     $('prev').disabled = pos === 0;
     $('next').disabled = pos === deck.length - 1;
   }
@@ -239,10 +254,11 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
   function toggleStar(){
     if (!deck.length) return;
     var c = deck[pos];
-    star[c.i] = !star[c.i];
-    $('star').classList.toggle('on', star[c.i]);
-    $('star').setAttribute('aria-pressed', star[c.i] ? 'true' : 'false');
-    if (starOnly && !star[c.i]) build();
+    star[c.k] = !star[c.k];
+    saveStars();
+    $('star').classList.toggle('on', star[c.k]);
+    $('star').setAttribute('aria-pressed', star[c.k] ? 'true' : 'false');
+    if (starOnly && !star[c.k]) build();
   }
   $('star').addEventListener('click', toggleStar);
   $('chapter').addEventListener('change', function(){ chap = this.value; build(); });

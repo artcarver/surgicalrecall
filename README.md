@@ -17,6 +17,8 @@ python3 -m http.server 8000
 - **Tap the card** (or press space) to flip it; space again moves to the next card.
 - **Arrow keys** change cards; up/down hide and show the answer.
 - **S** stars the current card. "Starred only" filters the deck down to them.
+  Stars are saved in the browser's `localStorage` (key `surgicalrecall.starred`),
+  so they survive a reload. They're per-browser — not synced across devices.
 - **Swipe** left/right on touch devices to move between cards.
 - The chapter dropdown filters by chapter; **Shuffle** and **Book order** set the
   card sequence.
@@ -33,3 +35,7 @@ Card data lives in the `<script id="cards" type="application/json">` block in
 `c` is the chapter number, `t` the chapter title (title-cased at runtime), `p` an
 optional prompt stem shared by a group of questions, `q` the question and `a` the
 answer.
+
+Saved stars are keyed by chapter + stem + question, so adding, removing, or
+reordering cards won't scramble them. Editing the text of a card that's already
+starred does drop that one star.

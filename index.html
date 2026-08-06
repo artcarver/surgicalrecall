@@ -113,6 +113,14 @@ select{flex:1 1 100%;min-width:0;padding-right:30px;
 .foot{margin:15px 4px 0;font-size:10px;letter-spacing:.03em;color:var(--soft);text-align:center;line-height:1.6}
 .foot .touch{display:none}
 @media (max-width:560px){.foot .keys{display:none}.foot .touch{display:inline}}
+/* Below ~460px the four chips can't share a row — and the armed reset label is
+   wider still — so pair them off in a grid instead of letting one chip wrap
+   alone. Reset keeps the right-hand slot. */
+@media (max-width:460px){
+  .bar{display:grid;grid-template-columns:1fr 1fr}
+  .bar select{grid-column:1/-1}
+  #reset{margin-left:0}
+}
 .empty{padding:40px 16px;text-align:center;font-size:11px;color:var(--soft)}
 @media (max-width:400px){.q,.a{font-size:18px}.stem{font-size:12px}.card{min-height:225px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
